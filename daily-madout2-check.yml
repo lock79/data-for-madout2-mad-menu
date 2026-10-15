@@ -1,0 +1,42 @@
+name: Daily MadOut2 version check
+
+on:
+  schedule:
+    # Runs once per day, at 14:37 UTC; GitHub may delay scheduled runs.
+    - cron: '37 14 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Google Play reader
+        run: python -m pip install --disable-pip-version-check 'google-play-scraper==1.2.7'
+
+      - name: Check MadOut2 version
+        run: python scripts/check_version.py
+
+      - name: Commit updated release.json only when it changed
+        shell: bash
+        run: |
+          if git diff --quiet -- release.json; then
+            echo 'No new version. Nothing to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add release.json
+          git commit -m 'chore: update MadOut2 release version'
+          git push
